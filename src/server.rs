@@ -19,7 +19,33 @@ const WORKERS: usize = 16;
 // and then creating the appropriate response and turning it into bytes which are sent to along
 // the stream by calling the `write_all` method.
 fn process_message(state: Arc<ServerState>, request: Request, mut stream: TcpStream) {
-    todo!()
+    match request {
+        Request::Publish { doc } => {
+            println!("Inside server publish");
+            let result = state.database.publish(doc);
+            // check for error?
+            let response = Response::PublishSuccess(result);
+            stream.write_all(&mut response.to_bytes()).unwrap();
+        }
+        Request::Retrieve { id } => {
+            let result = state.database.retrieve(id);
+            match result {
+                Some(str) => {
+                    let response = Response::RetrieveSuccess(str);
+                    stream.write_all(&mut response.to_bytes()).unwrap();
+                }
+                None => {
+                    let response = Response::Failure;
+                    stream.write_all(&mut response.to_bytes()).unwrap();
+                }
+            }
+        }
+        Request::Search { word } => {
+            let results = state.database.search(&word);
+            let response = Response::SearchSuccess(results);
+            stream.write_all(&mut response.to_bytes()).unwrap();
+        }
+    }
 }
 
 /// A struct that contains the state of the server
@@ -45,10 +71,11 @@ pub struct Server {
     state: Arc<ServerState>,
 }
 impl Server {
-    // TODO:
     // Create a new server by using the `ServerState::new` function
     pub fn new() -> Self {
-        todo!()
+        Server {
+            state: Arc::new(ServerState::new()),
+        }
     }
 
     // TODO:
@@ -67,7 +94,35 @@ impl Server {
     // `ServerState` to see if the server has been stopped. If it has, you should break out of the
     // loop and return.
     fn listen(&self, port: u16) {
-        todo!()
+        let state = Arc::clone(&self.state);
+        let _response = thread::spawn(move || {
+            let listener_result = TcpListener::bind(("127.0.0.1", port));
+            if listener_result.is_err() {
+                return;
+            }
+            let listener = listener_result.unwrap();
+            loop {
+                if state.is_stopped.load(Ordering::SeqCst) {
+                    return;
+                }
+                let connection = listener.accept();
+                match connection {
+                    Ok((mut stream, address)) => {
+                        println!("New connection");
+                        let request = Request::from_bytes(&mut stream).unwrap();
+                        println!("Request: {:?}", request);
+                        let copy = Arc::clone(&state);
+                        state
+                            .pool
+                            .execute(move || process_message(copy, request, stream))
+                    }
+                    Err(_err) => return,
+                }
+                if state.is_stopped.load(Ordering::SeqCst) {
+                    return;
+                }
+            }
+        });
     }
 
     // This function has already been partially completed for you
@@ -86,7 +141,8 @@ impl Server {
         }
 
         // TODO: Call the listen function and then loop (doing nothing) until the server has been stopped
-        todo!()
+        self.listen(port);
+        while !self.state.is_stopped.load(Ordering::SeqCst) {}
     }
     pub fn stop(&self) {
         self.state.is_stopped.store(true, Ordering::SeqCst);

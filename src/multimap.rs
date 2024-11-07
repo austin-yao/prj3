@@ -11,25 +11,42 @@ pub struct ConcurrentMultiMap<K: Hash + Eq, V> {
 }
 
 impl<K: Hash + Eq, V> ConcurrentMultiMap<K, V> {
-    // TODO:
     // Create a new empty ConcurrentMultiMap with the given number of buckets.
     pub fn new(bucket_count: usize) -> Self {
-        todo!()
+        let mut ret = ConcurrentMultiMap {
+            buckets: Vec::new(),
+        };
+        for _ in 0..bucket_count {
+            ret.buckets.push(RwLock::new(LinkedList::new()));
+        }
+        return ret;
     }
 }
 
 impl<K: Hash + Eq, V: Clone + Eq> ConcurrentMultiMap<K, V> {
-    // TODO:
     // Associate the given value with the given key. To do so, hash the key, and find the
     // corresponding bucket in the vector by modulo-ing the hash by the number of buckets. Then,
     // take a writer lock of the bucket and iterate over the linked list, checking if the
     // key-values pair already exists. If it does, return early. Otherwise, add the key-value pair
     // to the linked list.
     pub fn set(&self, key: K, value: V) {
-        todo!()
+        let mut hasher = DefaultHasher::new();
+        key.hash(&mut hasher);
+        let hash = hasher.finish();
+
+        let index: usize = (hash as usize) % self.buckets.len();
+        let mut list = self.buckets[index].write().unwrap();
+        let iter = (*list).iter_mut();
+
+        for (k, v) in iter {
+            if *k == key && *v == value {
+                return;
+            }
+        }
+
+        list.push_back((key, value));
     }
 
-    // TODO:
     // Retrieve all values associated with `key`. To do so, hash the key, and find the
     // corresponding bucket in the vector by modulo-ing the hash by the number of buckets. Then,
     // take a reader lock of the bucker and iterate over the linked list, collecting all values
@@ -39,7 +56,21 @@ impl<K: Hash + Eq, V: Clone + Eq> ConcurrentMultiMap<K, V> {
         K: Borrow<Q>,
         Q: Hash + Eq + ?Sized,
     {
-        todo!()
+        let mut hasher = DefaultHasher::new();
+        key.hash(&mut hasher);
+        let hash = hasher.finish();
+
+        let index: usize = (hash as usize) % self.buckets.len();
+        let list = self.buckets[index].read().unwrap();
+        let iter = (*list).iter();
+        let mut ans: Vec<V> = Vec::new();
+
+        for (k, v) in iter {
+            if k.borrow() == key {
+                ans.push((*v).clone());
+            }
+        }
+
+        return ans;
     }
 }
-

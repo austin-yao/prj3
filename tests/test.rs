@@ -225,8 +225,9 @@ mod integration {
 
     #[test]
     fn test_publish_5() {
-        let port = 7881;
+        let port = 7890;
         let (server, _handle) = start_server(port);
+        println!("230");
 
         let client = client::Client::new("127.0.0.1", port);
         let response = client.publish_from_path("data/austen-emma.txt");
