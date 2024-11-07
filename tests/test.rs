@@ -225,7 +225,7 @@ mod integration {
 
     #[test]
     fn test_publish_5() {
-        let port = 7890;
+        let port = 7881;
         let (server, _handle) = start_server(port);
         println!("230");
 

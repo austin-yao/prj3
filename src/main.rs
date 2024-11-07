@@ -53,10 +53,6 @@ fn main() {
             let client = Client::new(&server_address, server_port);
             match command {
                 Command::Publish { path } => {
-                    println!(
-                        "Publish. Address: {}, port: {}, path: {}",
-                        server_address, server_port, path
-                    );
                     let response = client.publish_from_path(&path);
                     match response {
                         Some(r) => println!("{:?}", r),
@@ -64,10 +60,6 @@ fn main() {
                     }
                 }
                 Command::Search { word } => {
-                    println!(
-                        "Search. Address: {}, port: {}, word: {}",
-                        server_address, server_port, word
-                    );
                     let response = client.search(&word);
                     match response {
                         Some(r) => println!("{:?}", r),
@@ -75,10 +67,6 @@ fn main() {
                     }
                 }
                 Command::Retrieve { id } => {
-                    println!(
-                        "Retrieve. Address: {}, port: {}, id: {}",
-                        server_address, server_port, id
-                    );
                     let response = client.retrieve(id);
                     match response {
                         Some(r) => println!("{:?}", r),
@@ -88,7 +76,6 @@ fn main() {
             }
         }
         Mode::Server { server_port } => {
-            println!("Server. port: {}", server_port);
             let server = Server::new();
             server.run(server_port);
         }

@@ -41,7 +41,6 @@ impl Database {
         for word in doc.split_whitespace() {
             self.reverse_index.set(word.to_string(), index);
         }
-
         blob_store.push(doc);
 
         return index;

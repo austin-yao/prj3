@@ -16,14 +16,14 @@ impl Request {
             Self::Publish { doc } => {
                 let mut bytes = vec![0];
                 let length = doc.len();
-                bytes.push(length as u8);
+                bytes.extend(length.to_be_bytes().iter());
                 bytes.extend(doc.as_bytes());
                 return bytes;
             }
             Self::Search { word } => {
                 let mut bytes = vec![1];
                 let length = word.len();
-                bytes.push(length as u8);
+                bytes.extend(length.to_be_bytes().iter());
                 bytes.extend(word.as_bytes());
                 return bytes;
             }
@@ -39,26 +39,22 @@ impl Request {
     // `from_bytes` should return the original request. If the request is invalid, return `None`.
     pub fn from_bytes<R: std::io::Read>(mut reader: R) -> Option<Self> {
         let mut response_type = [0; 1];
-        println!("Inside request from bytes");
         let result = reader.read_exact(&mut response_type);
         if result.is_err() {
             return None;
         }
 
-        println!("Request type: {}", response_type[0]);
-
         match response_type[0] {
             0 => {
-                let mut length_buffer = [0; 1];
+                let mut length_buffer = [0; 8];
                 let length_result = reader.read_exact(&mut length_buffer);
                 if length_result.is_err() {
                     return None;
                 }
-                let length = length_buffer[0];
+                let length = usize::from_be_bytes(length_buffer);
 
                 let mut string_buffer = vec![0; length.into()];
                 let read_result = reader.read_exact(&mut string_buffer);
-                println!("Finished reading to end");
                 if read_result.is_err() {
                     return None;
                 }
@@ -70,23 +66,19 @@ impl Request {
                 return Some(ret);
             }
             1 => {
-                let mut length_buffer = [0; 1];
+                let mut length_buffer = [0; 8];
                 let length_result = reader.read_exact(&mut length_buffer);
                 if length_result.is_err() {
                     return None;
                 }
-                let length = length_buffer[0];
+                let length = usize::from_be_bytes(length_buffer);
 
                 let mut string_buffer = vec![0; length.into()];
-                let read_result = reader.read_to_end(&mut string_buffer);
-                if read_result.is_err() {
-                    return None;
-                }
+                let _read_result = reader.read_exact(&mut string_buffer).unwrap();
 
                 let ret = Self::Search {
                     word: String::from_utf8(string_buffer).unwrap(),
                 };
-
                 return Some(ret);
             }
             2 => {
@@ -132,7 +124,7 @@ impl Response {
             }
             Self::SearchSuccess(indices) => {
                 let mut bytes = vec![1];
-                bytes.push(indices.len() as u8);
+                bytes.extend(indices.len().to_be_bytes().iter());
                 for index in indices {
                     bytes.extend(index.to_be_bytes().iter());
                 }
@@ -142,7 +134,7 @@ impl Response {
             Self::RetrieveSuccess(doc) => {
                 let mut bytes = vec![2];
                 let length = doc.len();
-                bytes.push(length as u8);
+                bytes.extend(length.to_be_bytes().iter());
                 bytes.extend(doc.as_bytes());
                 return bytes;
             }
@@ -173,14 +165,15 @@ impl Response {
                 return Some(ret);
             }
             1 => {
-                let mut length_buffer = [0; 1];
+                let mut length_buffer = [0; 8];
                 let length_result = reader.read_exact(&mut length_buffer);
                 if length_result.is_err() {
                     return None;
                 }
+                let length = usize::from_be_bytes(length_buffer);
 
                 let mut ret_vec: Vec<usize> = Vec::new();
-                for _ in 0..length_buffer[0] {
+                for _ in 0..length {
                     let mut bytes = [0; 8];
                     let read_result = reader.read_exact(&mut bytes);
                     if read_result.is_err() {
@@ -195,15 +188,15 @@ impl Response {
                 return Some(ret);
             }
             2 => {
-                let mut length_buffer = [0; 1];
+                let mut length_buffer = [0; 8];
                 let length_result = reader.read_exact(&mut length_buffer);
                 if length_result.is_err() {
                     return None;
                 }
-                let length = length_buffer[0];
+                let length = usize::from_be_bytes(length_buffer);
 
                 let mut string_buffer = vec![0; length.into()];
-                let read_result = reader.read_to_end(&mut string_buffer);
+                let read_result = reader.read_exact(&mut string_buffer);
                 if read_result.is_err() {
                     return None;
                 }

@@ -21,7 +21,6 @@ const WORKERS: usize = 16;
 fn process_message(state: Arc<ServerState>, request: Request, mut stream: TcpStream) {
     match request {
         Request::Publish { doc } => {
-            println!("Inside server publish");
             let result = state.database.publish(doc);
             // check for error?
             let response = Response::PublishSuccess(result);
@@ -98,27 +97,35 @@ impl Server {
         let _response = thread::spawn(move || {
             let listener_result = TcpListener::bind(("127.0.0.1", port));
             if listener_result.is_err() {
+                println!(
+                    "Listener returning due to error binding to port {}: {}",
+                    port,
+                    listener_result.unwrap_err()
+                );
                 return;
             }
             let listener = listener_result.unwrap();
             loop {
                 if state.is_stopped.load(Ordering::SeqCst) {
+                    println!("Listen returning, server stopped.");
                     return;
                 }
                 let connection = listener.accept();
                 match connection {
-                    Ok((mut stream, address)) => {
-                        println!("New connection");
+                    Ok((mut stream, _)) => {
                         let request = Request::from_bytes(&mut stream).unwrap();
-                        println!("Request: {:?}", request);
                         let copy = Arc::clone(&state);
                         state
                             .pool
                             .execute(move || process_message(copy, request, stream))
                     }
-                    Err(_err) => return,
+                    Err(_err) => {
+                        println!("Listen returning, new connection error.");
+                        return;
+                    }
                 }
                 if state.is_stopped.load(Ordering::SeqCst) {
+                    println!("Listen returning, server stopped.");
                     return;
                 }
             }

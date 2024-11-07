@@ -24,7 +24,6 @@ impl Client {
         }
     }
 
-    // TODO:
     // This function is optional, but you may find it useful.
     // Convert the request to bytes, send it to the server, read the response to bytes, and convert
     // the response to a Response. If the response is invalid, return `None`.
@@ -36,27 +35,22 @@ impl Client {
     fn send(&self, request: &Request) -> Option<Response> {
         let mut stream = std::net::TcpStream::connect(self.address).unwrap();
         let bytes = request.to_bytes();
-        let result = stream.write_all(&bytes);
-        println!("Result of send: {:?}", result);
+        let _result = stream.write_all(&bytes).unwrap();
 
         let ans = Response::from_bytes(stream);
-        println!("Result of from bytes: {:?}", ans);
         return ans;
     }
 
-    // TODO:
     // Read the file at `path` and send a `Publish` request to the server with its contents.
     // Return the response from the server.
     //
     // You can read the contents of a file with `let s = std::fs::read_to_string(path)`.
     pub fn publish_from_path(&self, path: &str) -> Option<Response> {
-        println!("Inside publish from_path");
         let s = std::fs::read_to_string(path).unwrap();
         let request = Request::Publish { doc: s };
-        println!("Publish from path request {:?}", request);
         return self.send(&request);
     }
-    // TODO:
+
     // Send a `Search` request to the server with the given `word`. Return the response from the
     // server.
     pub fn search(&self, word: &str) -> Option<Response> {
